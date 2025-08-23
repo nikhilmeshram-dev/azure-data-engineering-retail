@@ -1,0 +1,22 @@
+{
+	"name": "ds_wtaermark",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_adls",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": "empty.json",
+				"folderPath": "empty json",
+				"fileSystem": "adflogs"
+			}
+		},
+		"schema": {
+			"type": "object"
+		}
+	}
+}
