@@ -27,7 +27,7 @@
 						}
 					},
 					"dataset": {
-						"referenceName": "ds_lastload",
+						"referenceName": "ds_od_lastload",
 						"type": "DatasetReference"
 					}
 				}
@@ -47,12 +47,12 @@
 				"typeProperties": {
 					"source": {
 						"type": "SqlServerSource",
-						"sqlReaderQuery": "SELECT max(id) AS latestload\nFROM [test_db].[dbo].[saletest2]",
+						"sqlReaderQuery": "SELECT max(OrderID) AS latestload\n  FROM [test_retaildb].[dbo].[OrderDetails]\n",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
 					"dataset": {
-						"referenceName": "ds_onprem_sql",
+						"referenceName": "ds_od_latestload",
 						"type": "DatasetReference"
 					}
 				}
@@ -87,21 +87,19 @@
 					"source": {
 						"type": "SqlServerSource",
 						"sqlReaderQuery": {
-							"value": "SELECT *\nFROM [test_db].[dbo].[saletest2]\nWHERE id > '@{activity('lastload').output.firstRow.lastload}'\nAND id <= '@{activity('latestload').output.firstRow.latestload}'",
+							"value": "SELECT *\nFROM [test_retaildb].[dbo].[OrderDetails]\nWHERE OrderID > '@{activity('lastload').output.firstRow.lastload}'\nAND OrderID <= '@{activity('latestload').output.firstRow.latestload}'\n\n\n",
 							"type": "Expression"
 						},
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
 					"sink": {
-						"type": "DelimitedTextSink",
+						"type": "ParquetSink",
 						"storeSettings": {
 							"type": "AzureBlobFSWriteSettings"
 						},
 						"formatSettings": {
-							"type": "DelimitedTextWriteSettings",
-							"quoteAllText": true,
-							"fileExtension": ".txt"
+							"type": "ParquetWriteSettings"
 						}
 					},
 					"enableStaging": false,
@@ -116,13 +114,13 @@
 				},
 				"inputs": [
 					{
-						"referenceName": "ds_onprem_sql",
+						"referenceName": "ds_orderD",
 						"type": "DatasetReference"
 					}
 				],
 				"outputs": [
 					{
-						"referenceName": "ds_bronze_sales",
+						"referenceName": "ds_orderD_sink",
 						"type": "DatasetReference"
 					}
 				]
@@ -180,13 +178,13 @@
 				},
 				"inputs": [
 					{
-						"referenceName": "ds_wtaermark",
+						"referenceName": "ds_od_watermarksrc",
 						"type": "DatasetReference"
 					}
 				],
 				"outputs": [
 					{
-						"referenceName": "ds_watermark_sink",
+						"referenceName": "ds_od_watermarksink",
 						"type": "DatasetReference"
 					}
 				]
