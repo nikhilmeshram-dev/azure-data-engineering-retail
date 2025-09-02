@@ -1,0 +1,17 @@
+{
+	"name": "SQL script 2",
+	"properties": {
+		"content": {
+			"query": "CREATE VIEW gold.dim_customer\nAS\nSELECT *\nFROM\n    OPENROWSET(\n        BULK 'https://stretailenvdev.dfs.core.windows.net/gold/dim_customer',\n        FORMAT = 'DELTA'\n    ) AS query1;\n\n\n\nCREATE VIEW gold.dim_employee\nAS\nSELECT *\nFROM\n    OPENROWSET(\n        BULK 'https://stretailenvdev.dfs.core.windows.net/gold/dim_employee',\n        FORMAT = 'DELTA'\n    ) AS query1;\n\n\n\nCREATE VIEW gold.dim_products\nAS\nSELECT *\nFROM\n    OPENROWSET(\n        BULK 'https://stretailenvdev.dfs.core.windows.net/gold/dim_products',\n        FORMAT = 'DELTA'\n    ) AS query1;  \n\n\n\nCREATE VIEW gold.fact_sales\nAS\nSELECT *\nFROM\n    OPENROWSET(\n        BULK 'https://stretailenvdev.dfs.core.windows.net/gold/fact_sales',\n        FORMAT = 'DELTA'\n    ) AS query1;  \n\n\nCREATE VIEW gold.dim_channel\nAS\nSELECT *\nFROM\n    OPENROWSET(\n        BULK 'https://stretailenvdev.dfs.core.windows.net/gold/reference_data/dim_channel',\n        FORMAT = 'DELTA'\n    ) AS query1;  \n\n\nCREATE VIEW gold.dim_productsubcat\nAS\nSELECT *\nFROM\n    OPENROWSET(\n        BULK 'https://stretailenvdev.dfs.core.windows.net/gold/reference_data/dim_productsubcat',\n        FORMAT = 'DELTA'\n    ) AS query1;  \n\n\n\nCREATE VIEW gold.dim_store\nAS\nSELECT *\nFROM\n    OPENROWSET(\n        BULK 'https://stretailenvdev.dfs.core.windows.net/gold/reference_data/dim_store',\n        FORMAT = 'DELTA'\n    ) AS query1;  \n\n\n\nCREATE VIEW gold.dim_date\nAS\nSELECT *\nFROM\n    OPENROWSET(\n        BULK 'https://stretailenvdev.dfs.core.windows.net/gold/reference_data/dim_date',\n        FORMAT = 'DELTA'\n    ) AS query1; \n",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "synretaildb",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}
