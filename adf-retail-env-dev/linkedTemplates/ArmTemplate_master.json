@@ -1,0 +1,153 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "adf-retail-env-dev"
+		},
+		"SqlServer1_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'SqlServer1'"
+		},
+		"ls_adls_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'ls_adls'"
+		},
+		"ls_azuresqldb_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'ls_azuresqldb'"
+		},
+		"SqlServer1_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "localhost\\SQLEXPRESS"
+		},
+		"SqlServer1_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "RetailDB"
+		},
+		"SqlServer1_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "sa"
+		},
+		"ls_API_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://raw.githubusercontent.com/NikhilMeshram29/"
+		},
+		"ls_adls_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://stretailenvdev.dfs.core.windows.net/"
+		},
+		"ls_azuresqldb_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "sql-server-retail.database.windows.net"
+		},
+		"ls_azuresqldb_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "sql-retail-dev"
+		},
+		"ls_azuresqldb_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "nikhil"
+		},
+		"ls_databricks_properties_typeProperties_existingClusterId": {
+			"type": "string",
+			"defaultValue": "0901-121955-t8jm5vh7"
+		},
+		"Selfhosted-onprem-IR_properties_typeProperties_linkedInfo_resourceId": {
+			"type": "string",
+			"defaultValue": "/subscriptions/2b92e55e-ce56-4b46-9a23-4c8e6ea39941/resourcegroups/RG-test/providers/Microsoft.DataFactory/factories/adfstr/integrationruntimes/Test-selfhosted"
+		},
+		"containerUri": {
+			"type": "string",
+			"metadata": "URI to storage account containing linked ARM templates"
+		},
+		"containerSasToken": {
+			"type": "string",
+			"metadata": "Sas token to storage account containing linked ARM templates"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "adf-retail-env-dev_ArmTemplate_0",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2024-03-01",
+			"properties": {
+				"mode": "incremental",
+				"templateLink": {
+					"uri": "[concat(parameters('containerUri'), '/ArmTemplate_0.json', parameters('containerSasToken'))]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"factoryName": {
+						"value": "[parameters('factoryName')]"
+					},
+					"ls_adls_accountKey": {
+						"value": "[parameters('ls_adls_accountKey')]"
+					},
+					"ls_azuresqldb_password": {
+						"value": "[parameters('ls_azuresqldb_password')]"
+					},
+					"ls_API_properties_typeProperties_url": {
+						"value": "[parameters('ls_API_properties_typeProperties_url')]"
+					},
+					"ls_adls_properties_typeProperties_url": {
+						"value": "[parameters('ls_adls_properties_typeProperties_url')]"
+					},
+					"ls_azuresqldb_properties_typeProperties_server": {
+						"value": "[parameters('ls_azuresqldb_properties_typeProperties_server')]"
+					},
+					"ls_azuresqldb_properties_typeProperties_database": {
+						"value": "[parameters('ls_azuresqldb_properties_typeProperties_database')]"
+					},
+					"ls_azuresqldb_properties_typeProperties_userName": {
+						"value": "[parameters('ls_azuresqldb_properties_typeProperties_userName')]"
+					},
+					"ls_databricks_properties_typeProperties_existingClusterId": {
+						"value": "[parameters('ls_databricks_properties_typeProperties_existingClusterId')]"
+					},
+					"Selfhosted-onprem-IR_properties_typeProperties_linkedInfo_resourceId": {
+						"value": "[parameters('Selfhosted-onprem-IR_properties_typeProperties_linkedInfo_resourceId')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "adf-retail-env-dev_ArmTemplate_1",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2024-03-01",
+			"properties": {
+				"mode": "incremental",
+				"templateLink": {
+					"uri": "[concat(parameters('containerUri'), '/ArmTemplate_1.json', parameters('containerSasToken'))]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"factoryName": {
+						"value": "[parameters('factoryName')]"
+					},
+					"SqlServer1_password": {
+						"value": "[parameters('SqlServer1_password')]"
+					},
+					"SqlServer1_properties_typeProperties_server": {
+						"value": "[parameters('SqlServer1_properties_typeProperties_server')]"
+					},
+					"SqlServer1_properties_typeProperties_database": {
+						"value": "[parameters('SqlServer1_properties_typeProperties_database')]"
+					},
+					"SqlServer1_properties_typeProperties_userName": {
+						"value": "[parameters('SqlServer1_properties_typeProperties_userName')]"
+					}
+				}
+			},
+			"dependsOn": [
+				"[resourceId('Microsoft.Resources/deployments', 'adf-retail-env-dev_ArmTemplate_0')]"
+			]
+		}
+	]
+}

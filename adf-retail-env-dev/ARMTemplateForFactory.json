@@ -1,0 +1,1856 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "adf-retail-env-dev"
+		},
+		"SqlServer1_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'SqlServer1'"
+		},
+		"ls_adls_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'ls_adls'"
+		},
+		"ls_azuresqldb_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'ls_azuresqldb'"
+		},
+		"SqlServer1_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "localhost\\SQLEXPRESS"
+		},
+		"SqlServer1_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "RetailDB"
+		},
+		"SqlServer1_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "sa"
+		},
+		"ls_API_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://raw.githubusercontent.com/NikhilMeshram29/"
+		},
+		"ls_adls_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://stretailenvdev.dfs.core.windows.net/"
+		},
+		"ls_azuresqldb_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "sql-server-retail.database.windows.net"
+		},
+		"ls_azuresqldb_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "sql-retail-dev"
+		},
+		"ls_azuresqldb_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "nikhil"
+		},
+		"ls_databricks_properties_typeProperties_existingClusterId": {
+			"type": "string",
+			"defaultValue": "0901-121955-t8jm5vh7"
+		},
+		"Selfhosted-onprem-IR_properties_typeProperties_linkedInfo_resourceId": {
+			"type": "string",
+			"defaultValue": "/subscriptions/2b92e55e-ce56-4b46-9a23-4c8e6ea39941/resourcegroups/RG-test/providers/Microsoft.DataFactory/factories/adfstr/integrationruntimes/Test-selfhosted"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/ADLS-bronze-data-ingest')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Get Metadata File",
+						"type": "GetMetadata",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "ds_getmetadata",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"fieldList": [
+								"childItems"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					},
+					{
+						"name": "ForEach File",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Get Metadata File",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Get Metadata File').output.childItems",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "If Condition",
+									"type": "IfCondition",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"expression": {
+											"value": "@contains('channels.csv,paymentmethods.csv,productsubcategories.csv', item().name)",
+											"type": "Expression"
+										},
+										"ifTrueActivities": [
+											{
+												"name": "Copy data To bronze",
+												"type": "Copy",
+												"dependsOn": [],
+												"policy": {
+													"timeout": "0.12:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "DelimitedTextSource",
+														"storeSettings": {
+															"type": "AzureBlobFSReadSettings",
+															"recursive": true,
+															"enablePartitionDiscovery": false
+														},
+														"formatSettings": {
+															"type": "DelimitedTextReadSettings"
+														}
+													},
+													"sink": {
+														"type": "DelimitedTextSink",
+														"storeSettings": {
+															"type": "AzureBlobFSWriteSettings"
+														},
+														"formatSettings": {
+															"type": "DelimitedTextWriteSettings",
+															"quoteAllText": true,
+															"fileExtension": ".txt"
+														}
+													},
+													"enableStaging": false,
+													"translator": {
+														"type": "TabularTranslator",
+														"typeConversion": true,
+														"typeConversionSettings": {
+															"allowDataTruncation": true,
+															"treatBooleanAsNumber": false
+														}
+													}
+												},
+												"inputs": [
+													{
+														"referenceName": "ds_adls_source",
+														"type": "DatasetReference",
+														"parameters": {
+															"p_filename": {
+																"value": "@item().name",
+																"type": "Expression"
+															}
+														}
+													}
+												],
+												"outputs": [
+													{
+														"referenceName": "ds_adls_bronze",
+														"type": "DatasetReference",
+														"parameters": {}
+													}
+												]
+											}
+										]
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_getmetadata')]",
+				"[concat(variables('factoryId'), '/datasets/ds_adls_source')]",
+				"[concat(variables('factoryId'), '/datasets/ds_adls_bronze')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/API-bronze-data-ingest')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Copy EmpTOadls",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "HttpReadSettings",
+									"requestMethod": "GET"
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "ParquetSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "ParquetWriteSettings"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "EmployeeID",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "EmployeeID",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "FirstName",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "FirstName",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "LastName",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "LastName",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "Role",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Role",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "StoreID",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "StoreID",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "HireDate",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "HireDate",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "ds_api_empdata",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ds_sink_api_empdata",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_api_empdata')]",
+				"[concat(variables('factoryId'), '/datasets/ds_sink_api_empdata')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Bronze_layer_pipeline')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "OnpremToADLS",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "Onprem-bronze-data-ingest",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "OrderDetailsToadls",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "OnpremToADLS",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "retail-bronze-sales-ingest",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "APIToADLS",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "OrderDetailsToadls",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "API-bronze-data-ingest",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "ADLStoADLS",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "APIToADLS",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "ADLS-bronze-data-ingest",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/Onprem-bronze-data-ingest')]",
+				"[concat(variables('factoryId'), '/pipelines/retail-bronze-sales-ingest')]",
+				"[concat(variables('factoryId'), '/pipelines/API-bronze-data-ingest')]",
+				"[concat(variables('factoryId'), '/pipelines/ADLS-bronze-data-ingest')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/MasterPipeline')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "bronze_layer",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "Bronze_layer_pipeline",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "silver_layer",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "bronze_layer",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "Silver_layer_pipeline",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "gold_layer",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "silver_layer",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "gold_layer_pipeline",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/Bronze_layer_pipeline')]",
+				"[concat(variables('factoryId'), '/pipelines/Silver_layer_pipeline')]",
+				"[concat(variables('factoryId'), '/pipelines/gold_layer_pipeline')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Onprem-bronze-data-ingest')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "ConfigTable",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT  * FROM [dbo].[ConfigTable]",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "ds_azuresql_conftbl",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "ForEach Tables",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "ConfigTable",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('ConfigTable').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "sqlserverTOadls",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "SqlServerSource",
+											"sqlReaderQuery": {
+												"value": "SELECT * FROM \n[test_retaildb].[dbo].@{item().TableName}\nWHERE @{item().WatermarkColumn} > '@{item().LastModifiedDate}'",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "ParquetSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "ParquetWriteSettings"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "SqlServerTable1",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "ds_bronze_adls",
+											"type": "DatasetReference",
+											"parameters": {
+												"p_container": {
+													"value": "@item().SinkContainer",
+													"type": "Expression"
+												},
+												"p_folder": {
+													"value": "@item().FolderName",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "Update_lastmodified_date",
+									"type": "Lookup",
+									"dependsOn": [
+										{
+											"activity": "sqlserverTOadls",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "SqlServerSource",
+											"sqlReaderQuery": {
+												"value": "SELECT max(@{item().WatermarkColumn}) AS last_date\nFROM [test_retaildb].[dbo].@{item().TableName}",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"dataset": {
+											"referenceName": "ds_lastmod_up",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									}
+								},
+								{
+									"name": "Stored procedure lastmodifieddate",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "Update_lastmodified_date",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[UpdateConfigWatermark]",
+										"storedProcedureParameters": {
+											"LastModifiedDate": {
+												"value": {
+													"value": "@activity('Update_lastmodified_date').output.firstRow.last_date",
+													"type": "Expression"
+												},
+												"type": "DateTime"
+											},
+											"TableName": {
+												"value": {
+													"value": "@item().TableName",
+													"type": "Expression"
+												},
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "ls_azuresqldb",
+										"type": "LinkedServiceReference"
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_azuresql_conftbl')]",
+				"[concat(variables('factoryId'), '/datasets/SqlServerTable1')]",
+				"[concat(variables('factoryId'), '/datasets/ds_bronze_adls')]",
+				"[concat(variables('factoryId'), '/datasets/ds_lastmod_up')]",
+				"[concat(variables('factoryId'), '/linkedServices/ls_azuresqldb')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Silver_layer_pipeline')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "customers",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Azure-data-engineering-retail/azure-data-engineering-retail/silver/silver_customers"
+						},
+						"linkedServiceName": {
+							"referenceName": "ls_databricks",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "orders",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "customers",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Azure-data-engineering-retail/azure-data-engineering-retail/silver/silver_orders"
+						},
+						"linkedServiceName": {
+							"referenceName": "ls_databricks",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "orderDetails",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "orders",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Azure-data-engineering-retail/azure-data-engineering-retail/silver/silver_order_details"
+						},
+						"linkedServiceName": {
+							"referenceName": "ls_databricks",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "product",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Azure-data-engineering-retail/azure-data-engineering-retail/silver/silver_products"
+						},
+						"linkedServiceName": {
+							"referenceName": "ls_databricks",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "payments",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Azure-data-engineering-retail/azure-data-engineering-retail/silver/silver_payments"
+						},
+						"linkedServiceName": {
+							"referenceName": "ls_databricks",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "employees",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Azure-data-engineering-retail/azure-data-engineering-retail/silver/silver_employee"
+						},
+						"linkedServiceName": {
+							"referenceName": "ls_databricks",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "reference_data",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Azure-data-engineering-retail/azure-data-engineering-retail/silver/silver_reference_data"
+						},
+						"linkedServiceName": {
+							"referenceName": "ls_databricks",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "returns",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Azure-data-engineering-retail/azure-data-engineering-retail/silver/silver_returns"
+						},
+						"linkedServiceName": {
+							"referenceName": "ls_databricks",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_databricks')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/gold_layer_pipeline')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "dim_customers",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Azure-data-engineering-retail/azure-data-engineering-retail/gold/dim_customers"
+						},
+						"linkedServiceName": {
+							"referenceName": "ls_databricks",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "dim_employees",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Azure-data-engineering-retail/azure-data-engineering-retail/gold/dim_employees"
+						},
+						"linkedServiceName": {
+							"referenceName": "ls_databricks",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "dim_products",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "dim_customers",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Azure-data-engineering-retail/azure-data-engineering-retail/gold/dim_products"
+						},
+						"linkedServiceName": {
+							"referenceName": "ls_databricks",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "dim_reference_table",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "dim_products",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Azure-data-engineering-retail/azure-data-engineering-retail/gold/dim_reference_table"
+						},
+						"linkedServiceName": {
+							"referenceName": "ls_databricks",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "fact_sales",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "dim_reference_table",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Azure-data-engineering-retail/azure-data-engineering-retail/gold/fact_sales"
+						},
+						"linkedServiceName": {
+							"referenceName": "ls_databricks",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_databricks')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/retail-bronze-sales-ingest')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "lastload",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "JsonSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "JsonReadSettings"
+								}
+							},
+							"dataset": {
+								"referenceName": "ds_od_lastload",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "latestload",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "SELECT max(OrderID) AS latestload\n  FROM [test_retaildb].[dbo].[OrderDetails]\n",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "ds_od_latestload",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "SQL_To_BRONZE_SALES",
+						"description": "Incrementalloading",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "lastload",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "latestload",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": {
+									"value": "SELECT *\nFROM [test_retaildb].[dbo].[OrderDetails]\nWHERE OrderID > '@{activity('lastload').output.firstRow.lastload}'\nAND OrderID <= '@{activity('latestload').output.firstRow.latestload}'\n\n\n",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "ParquetSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "ParquetWriteSettings"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "ds_orderD",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ds_orderD_sink",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Watermark",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "SQL_To_BRONZE_SALES",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "JsonSource",
+								"additionalColumns": [
+									{
+										"name": "lastload",
+										"value": {
+											"value": "@activity('latestload').output.firstRow.latestload",
+											"type": "Expression"
+										}
+									}
+								],
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "JsonReadSettings"
+								}
+							},
+							"sink": {
+								"type": "JsonSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "JsonWriteSettings"
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "ds_od_watermarksrc",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ds_od_watermarksink",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_od_lastload')]",
+				"[concat(variables('factoryId'), '/datasets/ds_od_latestload')]",
+				"[concat(variables('factoryId'), '/datasets/ds_orderD')]",
+				"[concat(variables('factoryId'), '/datasets/ds_orderD_sink')]",
+				"[concat(variables('factoryId'), '/datasets/ds_od_watermarksrc')]",
+				"[concat(variables('factoryId'), '/datasets/ds_od_watermarksink')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SqlServerTable1')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "SqlServerTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SqlServer1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_adls_bronze')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": "reference_data",
+						"fileSystem": "bronze"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_adls_source')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"p_filename": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().p_filename",
+							"type": "Expression"
+						},
+						"fileSystem": "source"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_api_empdata')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_API",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "HttpServerLocation",
+						"relativeUrl": "resources/refs/heads/main/employees.csv"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_API')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_azuresql_conftbl')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_azuresqldb",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_azuresqldb')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_bronze_adls')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"p_container": {
+						"type": "string"
+					},
+					"p_folder": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": {
+							"value": "@dataset().p_folder",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().p_container",
+							"type": "Expression"
+						}
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_getmetadata')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileSystem": "source"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_lastmod_up')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "SqlServerTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SqlServer1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_od_lastload')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "lastload.json",
+						"folderPath": "lastload",
+						"fileSystem": "adflogs"
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_od_latestload')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "SqlServerTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SqlServer1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_od_watermarksink')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "lastload.json",
+						"folderPath": "lastload",
+						"fileSystem": "adflogs"
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_od_watermarksrc')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "empty.json",
+						"folderPath": "empty json",
+						"fileSystem": "adflogs"
+					}
+				},
+				"schema": {
+					"type": "object"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_orderD')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "SqlServerTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SqlServer1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_orderD_sink')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": "f_OrderDetails",
+						"fileSystem": "bronze"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_sink_api_empdata')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "employee.parquet",
+						"folderPath": "f_Employee",
+						"fileSystem": "bronze"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SqlServer1')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "SqlServer",
+				"typeProperties": {
+					"server": "[parameters('SqlServer1_properties_typeProperties_server')]",
+					"database": "[parameters('SqlServer1_properties_typeProperties_database')]",
+					"encrypt": "mandatory",
+					"trustServerCertificate": true,
+					"authenticationType": "SQL",
+					"userName": "[parameters('SqlServer1_properties_typeProperties_userName')]",
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('SqlServer1_password')]"
+					}
+				},
+				"connectVia": {
+					"referenceName": "Selfhosted-onprem-IR",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/Selfhosted-onprem-IR')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ls_API')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "HttpServer",
+				"typeProperties": {
+					"url": "[parameters('ls_API_properties_typeProperties_url')]",
+					"enableServerCertificateValidation": true,
+					"authenticationType": "Anonymous"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ls_adls')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('ls_adls_properties_typeProperties_url')]",
+					"accountKey": {
+						"type": "SecureString",
+						"value": "[parameters('ls_adls_accountKey')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ls_azuresqldb')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"server": "[parameters('ls_azuresqldb_properties_typeProperties_server')]",
+					"database": "[parameters('ls_azuresqldb_properties_typeProperties_database')]",
+					"encrypt": "mandatory",
+					"trustServerCertificate": false,
+					"authenticationType": "SQL",
+					"userName": "[parameters('ls_azuresqldb_properties_typeProperties_userName')]",
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('ls_azuresqldb_password')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ls_databricks')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureDatabricks",
+				"typeProperties": {
+					"domain": "https://adb-1104162014529928.8.azuredatabricks.net",
+					"authentication": "MSI",
+					"workspaceResourceId": "/subscriptions/2b92e55e-ce56-4b46-9a23-4c8e6ea39941/resourceGroups/RG-retail-dev/providers/Microsoft.Databricks/workspaces/dbws_retail-dev",
+					"existingClusterId": "[parameters('ls_databricks_properties_typeProperties_existingClusterId')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Schedule_trigger_fin_dev')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "MasterPipeline",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Minute",
+						"interval": 15,
+						"startTime": "2025-09-09T22:55:00",
+						"timeZone": "India Standard Time"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/MasterPipeline')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AutoResolveIntegrationRuntime')]",
+			"type": "Microsoft.DataFactory/factories/integrationRuntimes",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "Managed",
+				"typeProperties": {
+					"computeProperties": {
+						"location": "AutoResolve",
+						"dataFlowProperties": {
+							"computeType": "General",
+							"coreCount": 8,
+							"timeToLive": 0
+						}
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Selfhosted-onprem-IR')]",
+			"type": "Microsoft.DataFactory/factories/integrationRuntimes",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "SelfHosted",
+				"typeProperties": {
+					"linkedInfo": {
+						"resourceId": "[parameters('Selfhosted-onprem-IR_properties_typeProperties_linkedInfo_resourceId')]",
+						"authorizationType": "Rbac"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/WorkspaceSystemIdentity')]",
+			"type": "Microsoft.DataFactory/factories/credentials",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "ManagedIdentity",
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		}
+	]
+}

@@ -1,0 +1,48 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "adf-retail-env-dev"
+		},
+		"SqlServer1_password": {
+			"value": ""
+		},
+		"ls_adls_accountKey": {
+			"value": ""
+		},
+		"ls_azuresqldb_password": {
+			"value": ""
+		},
+		"SqlServer1_properties_typeProperties_server": {
+			"value": "localhost\\SQLEXPRESS"
+		},
+		"SqlServer1_properties_typeProperties_database": {
+			"value": "RetailDB"
+		},
+		"SqlServer1_properties_typeProperties_userName": {
+			"value": "sa"
+		},
+		"ls_API_properties_typeProperties_url": {
+			"value": "https://raw.githubusercontent.com/NikhilMeshram29/"
+		},
+		"ls_adls_properties_typeProperties_url": {
+			"value": "https://stretailenvdev.dfs.core.windows.net/"
+		},
+		"ls_azuresqldb_properties_typeProperties_server": {
+			"value": "sql-server-retail.database.windows.net"
+		},
+		"ls_azuresqldb_properties_typeProperties_database": {
+			"value": "sql-retail-dev"
+		},
+		"ls_azuresqldb_properties_typeProperties_userName": {
+			"value": "nikhil"
+		},
+		"ls_databricks_properties_typeProperties_existingClusterId": {
+			"value": "0901-121955-t8jm5vh7"
+		},
+		"Selfhosted-onprem-IR_properties_typeProperties_linkedInfo_resourceId": {
+			"value": "/subscriptions/2b92e55e-ce56-4b46-9a23-4c8e6ea39941/resourcegroups/RG-test/providers/Microsoft.DataFactory/factories/adfstr/integrationruntimes/Test-selfhosted"
+		}
+	}
+}
