@@ -1,0 +1,93 @@
+{
+	"name": "Bronze_layer_pipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "OnpremToADLS",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "Onprem-bronze-data-ingest",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "OrderDetailsToadls",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "OnpremToADLS",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "retail-bronze-sales-ingest",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "APIToADLS",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "OrderDetailsToadls",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "API-bronze-data-ingest",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "ADLStoADLS",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "APIToADLS",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "ADLS-bronze-data-ingest",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			}
+		],
+		"annotations": []
+	}
+}

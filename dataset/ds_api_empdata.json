@@ -1,0 +1,22 @@
+{
+	"name": "ds_api_empdata",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_API",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "HttpServerLocation",
+				"relativeUrl": "resources/refs/heads/main/employees.csv"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": []
+	}
+}
