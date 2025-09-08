@@ -1719,9 +1719,15 @@
 					"url": "[parameters('ls_API_properties_typeProperties_url')]",
 					"enableServerCertificateValidation": true,
 					"authenticationType": "Anonymous"
+				},
+				"connectVia": {
+					"referenceName": "integrationRuntime1",
+					"type": "IntegrationRuntimeReference"
 				}
 			},
-			"dependsOn": []
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/integrationRuntime1')]"
+			]
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/ls_adls')]",
@@ -1736,9 +1742,15 @@
 						"type": "SecureString",
 						"value": "[parameters('ls_adls_accountKey')]"
 					}
+				},
+				"connectVia": {
+					"referenceName": "integrationRuntime1",
+					"type": "IntegrationRuntimeReference"
 				}
 			},
-			"dependsOn": []
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/integrationRuntime1')]"
+			]
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/ls_azuresqldb')]",
@@ -1758,9 +1770,15 @@
 						"type": "SecureString",
 						"value": "[parameters('ls_azuresqldb_password')]"
 					}
+				},
+				"connectVia": {
+					"referenceName": "integrationRuntime1",
+					"type": "IntegrationRuntimeReference"
 				}
 			},
-			"dependsOn": []
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/integrationRuntime1')]"
+			]
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/ls_databricks')]",
@@ -1774,9 +1792,15 @@
 					"authentication": "MSI",
 					"workspaceResourceId": "/subscriptions/2b92e55e-ce56-4b46-9a23-4c8e6ea39941/resourceGroups/RG-retail-dev/providers/Microsoft.Databricks/workspaces/dbws_retail-dev",
 					"existingClusterId": "[parameters('ls_databricks_properties_typeProperties_existingClusterId')]"
+				},
+				"connectVia": {
+					"referenceName": "integrationRuntime1",
+					"type": "IntegrationRuntimeReference"
 				}
 			},
-			"dependsOn": []
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/integrationRuntime1')]"
+			]
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Schedule_trigger_fin_dev')]",
@@ -1799,7 +1823,7 @@
 					"recurrence": {
 						"frequency": "Minute",
 						"interval": 15,
-						"startTime": "2025-09-09T22:55:00",
+						"startTime": "2025-09-09T00:10:00",
 						"timeZone": "India Standard Time"
 					}
 				}
@@ -1837,6 +1861,27 @@
 					"linkedInfo": {
 						"resourceId": "[parameters('Selfhosted-onprem-IR_properties_typeProperties_linkedInfo_resourceId')]",
 						"authorizationType": "Rbac"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/integrationRuntime1')]",
+			"type": "Microsoft.DataFactory/factories/integrationRuntimes",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "Managed",
+				"typeProperties": {
+					"computeProperties": {
+						"location": "AutoResolve",
+						"dataFlowProperties": {
+							"computeType": "General",
+							"coreCount": 8,
+							"timeToLive": 10,
+							"cleanup": false,
+							"customProperties": []
+						}
 					}
 				}
 			},
