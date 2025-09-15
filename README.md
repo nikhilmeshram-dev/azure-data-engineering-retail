@@ -12,12 +12,12 @@ The pipeline ingests raw data from multiple sources, transforms it into a clean,
     - Deliver **business-ready datasets** for BI dashboards and decision-making.
 
 ## Key Features
- 🔹 **Incremental Loading** → Implemented watermark strategy to load only new/changed data.
- 🔹 **Delta Lake** → Used for ACID transactions, schema enforcement, and schema evolution.
- 🔹 **SCD Type 1 & Type 2** → Managed Slowly Changing Dimensions to handle historical customer & product data.
- 🔹 **Star Schema** → Designed a dimensional model with Fact & Dimension tables for analytics.
- 🔹 **Partitioning & Optimization** → Improved performance using partitioning, Z-ordering, and broadcast joins in PySpark.
- 🔹 **Medallion Architecture (Bronze → Silver → Gold)** →
+-  **Incremental Loading** → Implemented watermark strategy to load only new/changed data.
+-  **Delta Lake** → Used for ACID transactions, schema enforcement, and schema evolution.
+-  **SCD Type 1 & Type 2** → Managed Slowly Changing Dimensions to handle historical customer & product data.
+-  **Star Schema** → Designed a dimensional model with Fact & Dimension tables for analytics.
+-  **Partitioning & Optimization** → Improved performance using partitioning, Z-ordering, and broadcast joins in PySpark.
+-  **Medallion Architecture (Bronze → Silver → Gold)** →
     - **Bronze**: Raw ingested data from CSV, SQL DB, and APIs.
     - **Silver**: Cleaned, deduplicated, standardized data with business rules.
     - **Gold**: Curated fact & dimension tables for BI consumption.
@@ -41,6 +41,13 @@ The pipeline ingests raw data from multiple sources, transforms it into a clean,
 - **Power BI** → BI dashboards
 
 ## Challenges & Solutions
+**Handling Incremental Data Loads**
+- *Problem*: Full refresh was costly and time-consuming.
+- *Solution*: Implemented **watermark strategy** to capture only new/updated records, reducing processing time by ~70%.
+
+**Data Quality & Schema Drift**
+- *Problem*: Source files had missing values, duplicates, and evolving schema.
+- *Solution*: Used **PySpark transformations** for null handling, deduplication, and enabled **schema evolution in Delta Lake**.
 
 
 ## Results
